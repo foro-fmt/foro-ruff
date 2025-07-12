@@ -5,7 +5,7 @@ use ruff_python_parser::{parse, AsMode};
 use ruff_python_trivia::CommentRanges;
 use ruff_workspace::configuration::Configuration;
 use ruff_workspace::resolver::{
-    match_exclusion, resolve_root_settings, ConfigurationTransformer, Relativity,
+    match_exclusion, resolve_root_settings, ConfigurationOrigin, ConfigurationTransformer,
 };
 use ruff_workspace::{pyproject, Settings};
 use std::path::PathBuf;
@@ -33,7 +33,11 @@ pub fn format(given_file_name: String, file_content: String) -> Result<FormatRes
     let pyproject = pyproject::find_settings_toml(&target_path)?;
     let settings = match &pyproject {
         None => Settings::default(),
-        Some(p) => resolve_root_settings(p, Relativity::Parent, &DummyConfigurationTransformer {})?,
+        Some(p) => resolve_root_settings(
+            p,
+            &DummyConfigurationTransformer {},
+            ConfigurationOrigin::Ancestor,
+        )?,
     };
 
     let ignore = match_exclusion(
@@ -50,11 +54,13 @@ pub fn format(given_file_name: String, file_content: String) -> Result<FormatRes
         return Ok(FormatResult::Ignored);
     }
 
-    let options = settings
-        .formatter
-        .to_format_options(source_type, &file_content);
+    let options =
+        settings
+            .formatter
+            .to_format_options(source_type, &file_content, Some(&target_path));
 
-    let parsed = parse(&file_content, source_type.as_mode()).context("Syntax error in input")?;
+    let parsed =
+        parse(&file_content, source_type.as_mode().into()).context("Syntax error in input")?;
     let comment_ranges = CommentRanges::from(parsed.tokens());
     let formatted = format_module_ast(&parsed, &comment_ranges, &file_content, options)
         .context("Failed to format node")?;
