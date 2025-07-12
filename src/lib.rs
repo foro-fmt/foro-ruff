@@ -1,7 +1,7 @@
 mod format;
 
-use foro_plugin_utils::compat_util::get_target;
 use crate::format::{format, FormatResult};
+use foro_plugin_utils::compat_util::get_target;
 use foro_plugin_utils::data_json_utils::JsonGetter;
 use foro_plugin_utils::foro_plugin_setup;
 use serde_json::{json, Value};
