@@ -59,13 +59,32 @@ pub fn format(given_file_name: String, file_content: String) -> Result<FormatRes
             .formatter
             .to_format_options(source_type, &file_content, Some(&target_path));
 
-    let parsed =
-        parse(&file_content, source_type.as_mode().into()).context("Syntax error in input")?;
-    let comment_ranges = CommentRanges::from(parsed.tokens());
-    let formatted = format_module_ast(&parsed, &comment_ranges, &file_content, options)
-        .context("Failed to format node")?;
+    let parsed = match parse(&file_content, source_type.as_mode().into()) {
+        Ok(parsed) => parsed,
+        Err(e) => {
+            return Ok(FormatResult::Error {
+                error: format!("Syntax error: {}", e),
+            });
+        }
+    };
 
-    Ok(FormatResult::Success {
-        formatted_content: formatted.print()?.into_code(),
-    })
+    let comment_ranges = CommentRanges::from(parsed.tokens());
+
+    let formatted = match format_module_ast(&parsed, &comment_ranges, &file_content, options) {
+        Ok(formatted) => formatted,
+        Err(e) => {
+            return Ok(FormatResult::Error {
+                error: format!("Formatting error: {}", e),
+            });
+        }
+    };
+
+    match formatted.print() {
+        Ok(printed) => Ok(FormatResult::Success {
+            formatted_content: printed.into_code(),
+        }),
+        Err(e) => Ok(FormatResult::Error {
+            error: format!("Print error: {}", e),
+        }),
+    }
 }

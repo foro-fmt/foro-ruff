@@ -1,4 +1,6 @@
 mod format;
+#[cfg(test)]
+mod test;
 
 use crate::format::{format, FormatResult};
 use foro_plugin_utils::compat_util::get_target;
@@ -9,8 +11,23 @@ use serde_json::{json, Value};
 pub fn main_with_json(input: Value) -> Value {
     let start = std::time::Instant::now();
 
-    let target = get_target(&input).unwrap();
-    let target_content = String::get_value(&input, ["target-content"]).unwrap();
+    let target = match get_target(&input) {
+        Ok(t) => t,
+        Err(e) => {
+            return json!({
+                "plugin-panic": format!("Failed to get target: {}", e),
+            });
+        }
+    };
+
+    let target_content = match String::get_value(&input, ["target-content"]) {
+        Ok(content) => content,
+        Err(e) => {
+            return json!({
+                "plugin-panic": format!("Failed to get target-content: {}", e),
+            });
+        }
+    };
 
     let result = match format(target, target_content) {
         Ok(FormatResult::Success { formatted_content }) => {
